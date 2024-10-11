@@ -3,13 +3,10 @@ from typing import Type
 from django.db import models
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
-from django.core.exceptions import ObjectDoesNotExist
+from rest_framework import views, status, serializers
 from django.http import Http404
 from .models import UserLog
 from .serializers import UserLogSerializer
-from rest_framework import serializers
-from rest_framework import views
-
 from drf_spectacular.utils import extend_schema
 
 
@@ -22,26 +19,29 @@ class UserLogList(views.APIView):
     def get(self, request) -> Response:
         queryset = self.model.objects.all()
         serializer = self.serializer_class(queryset, many=True)
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(tags=['UserLogsList'], operation_id='create')
+    def post(self, request) -> Response:
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class UserLogDetail(views.APIView):
-    """
-    Retrieve, update or delete a car instance.
-    """
+class UserLogByUser(views.APIView):
     model: Type[models.Model] = UserLog
     serializer_class: Type[serializers.ModelSerializer] = UserLogSerializer
     permission_classes: list = [AllowAny, ]
 
-    def get_object(self, pk: int) -> UserLog:
-        try:
-            return self.model.objects.select_related('company').get(pk=pk)
-        except ObjectDoesNotExist:
-            raise Http404
+    @extend_schema(tags=['UserLogsByUser'], operation_id='list_by_user')
+    def get(self, request, user_id: int) -> Response:
+        queryset = self.model.objects.filter(telegram_user_id=user_id)
+        
+        if not queryset.exists():
+            raise Http404(f"No logs found for user with id {user_id}")
 
-    @extend_schema(tags=['UserLogDetail'], operation_id='list')
-    def get(self, request, pk: int) -> Response:
-        queryset = self.get_object(pk=pk)
-        serializer = self.serializer_class(queryset)
-        return Response(serializer.data)
+        serializer = self.serializer_class(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
