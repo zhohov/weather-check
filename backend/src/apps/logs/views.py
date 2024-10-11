@@ -9,15 +9,16 @@ from .models import UserLog
 from .serializers import UserLogSerializer
 from rest_framework import serializers
 from rest_framework import views
-from rest_framework.renderers import JSONRenderer, BrowsableAPIRenderer
+
+from drf_spectacular.utils import extend_schema
 
 
 class UserLogList(views.APIView):
     model: Type[models.Model] = UserLog
     serializer_class: Type[serializers.ModelSerializer] = UserLogSerializer
-    renderer_classes = [BrowsableAPIRenderer]
     permission_classes: list = [AllowAny, ]
 
+    @extend_schema(tags=['UserLogsList'], operation_id='list')
     def get(self, request) -> Response:
         queryset = self.model.objects.all()
         serializer = self.serializer_class(queryset, many=True)
@@ -30,7 +31,6 @@ class UserLogDetail(views.APIView):
     """
     model: Type[models.Model] = UserLog
     serializer_class: Type[serializers.ModelSerializer] = UserLogSerializer
-    renderer_classes = [JSONRenderer, BrowsableAPIRenderer]
     permission_classes: list = [AllowAny, ]
 
     def get_object(self, pk: int) -> UserLog:
@@ -39,6 +39,7 @@ class UserLogDetail(views.APIView):
         except ObjectDoesNotExist:
             raise Http404
 
+    @extend_schema(tags=['UserLogDetail'], operation_id='list')
     def get(self, request, pk: int) -> Response:
         queryset = self.get_object(pk=pk)
         serializer = self.serializer_class(queryset)
